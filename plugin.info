@@ -1,0 +1,2 @@
+PLUGIN = rubik
+PKG_DEP = compiz-cube

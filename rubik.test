@@ -1,0 +1,711 @@
+/*
+ * Compiz cube rubik plugin
+ *
+ * rubik.c
+ *
+ * This plugin allows the cube to transform as a Rubik's cube.
+ *
+ * Written in 2007 by David Mikos
+ *
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
+
+/*
+ * Loosely based on freewins, atlantis, and anaglyph.
+ */
+
+/**
+ * OpenGL(TM) is a trademark of Silicon Graphics, Inc.
+ * (c) Copyright 1993, 1994, Silicon Graphics, Inc.
+ * ALL RIGHTS RESERVED
+ * Permission to use, copy, modify, and distribute this software for
+ * any purpose and without fee is hereby granted, provided that the above
+ * copyright notice appear in all copies and that both the copyright notice
+ * and this permission notice appear in supporting documentation, and that
+ * the name of Silicon Graphics, Inc. not be used in advertising
+ * or publicity pertaining to distribution of the software without specific,
+ * written prior permission.
+ *
+ * THE MATERIAL EMBODIED ON THIS SOFTWARE IS PROVIDED TO YOU "AS-IS"
+ * AND WITHOUT WARRANTY OF ANY KIND, EXPRESS, IMPLIED OR OTHERWISE,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY OR
+ * FITNESS FOR A PARTICULAR PURPOSE.  IN NO EVENT SHALL SILICON
+ * GRAPHICS, INC.  BE LIABLE TO YOU OR ANYONE ELSE FOR ANY DIRECT,
+ * SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY
+ * KIND, OR ANY DAMAGES WHATSOEVER, INCLUDING WITHOUT LIMITATION,
+ * LOSS OF PROFIT, LOSS OF USE, SAVINGS OR REVENUE, OR THE CLAIMS OF
+ * THIRD PARTIES, WHETHER OR NOT SILICON GRAPHICS, INC.  HAS BEEN
+ * ADVISED OF THE POSSIBILITY OF SUCH LOSS, HOWEVER CAUSED AND ON
+ * ANY THEORY OF LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE
+ * POSSESSION, USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * US Government Users Restricted Rights
+ * Use, duplication, or disclosure by the Government is subject to
+ * restrictions set forth in FAR 52.227.19(c)(2) or subparagraph
+ * (c)(1)(ii) of the Rights in Technical Data and Computer Software
+ * clause at DFARS 252.227-7013 and/or in similar or successor
+ * clauses in the FAR or the DOD or NASA FAR Supplement.
+ * Unpublished-- rights reserved under the copyright laws of the
+ * United States.  Contractor/manufacturer is Silicon Graphics,
+ * Inc., 2011 N.  Shoreline Blvd., Mountain View, CA 94039-7311.
+ *
+ */
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
+#include <math.h>
+
+
+
+#include "rubik-internal.h"
+#include "rubik_options.h"
+
+
+int rubikDisplayPrivateIndex;
+
+int cubeDisplayPrivateIndex;
+
+
+
+static void
+initRubik (CompScreen *s)
+{
+
+	RUBIK_SCREEN (s);
+	CUBE_SCREEN (s);
+
+	rs->tempTransform = malloc (sizeof(CompTransform));
+	vSize = rubikGetVerticalSize(s);
+	
+	initializeWorldVariables(s->hsize, cs->distance);
+}
+
+void initializeWorldVariables(int hs, float perpDistCentreToWall) { //precalculate some values
+
+	hSize = hs;
+	q = (float) hSize;
+
+	distance = perpDistCentreToWall;
+	radius = perpDistCentreToWall/sinf(PI*(0.5-1/q));
+	
+	float timer=0;
+}
+
+static void
+freeRubik (CompScreen *s)
+{
+	RUBIK_SCREEN (s);
+	
+	if (rs->tempTransform)
+		free (rs->tempTransform);
+}
+
+static void
+updateRubik (CompScreen *s)
+{
+	freeRubik (s);
+	initRubik (s);
+}
+
+static void
+rubikScreenOptionChange (CompScreen *s,
+		CompOption            *opt,
+		RubikScreenOptions num)
+{
+	updateRubik (s);
+}
+
+
+static void
+rubikSpeedFactorOptionChange (CompScreen *s,
+		CompOption            *opt,
+		RubikScreenOptions num)
+{
+	speedFactor = rubikGetSpeedFactor(s);
+}
+
+static void
+rubikClearTargetOutput (CompScreen *s,
+		float      xRotate,
+		float      vRotate)
+{
+	RUBIK_SCREEN (s);
+	CUBE_SCREEN (s);
+
+	UNWRAP (rs, cs, clearTargetOutput);
+	(*cs->clearTargetOutput) (s, xRotate, vRotate);
+	WRAP (rs, cs, clearTargetOutput, rubikClearTargetOutput);
+
+	glClear (GL_DEPTH_BUFFER_BIT);
+}
+
+
+static void rubikPaintInside (CompScreen *s,
+		const ScreenPaintAttrib *sAttrib,
+		const CompTransform     *transform,
+		CompOutput              *output,
+		int                     size)
+{
+	RUBIK_SCREEN (s);
+	CUBE_SCREEN (s);
+
+	if (hSize!=s->hsize) updateRubik (s);
+
+	ScreenPaintAttrib sA = *sAttrib;
+	CompTransform mT = *transform;
+
+	sA.yRotate += cs->invert * (360.0f / size) *
+	              (cs->xRotations - (s->x * cs->nOutput));
+
+	(*s->applyScreenTransform) (s, &sA, output, &mT);
+
+	
+	rs->damage = TRUE;
+
+	UNWRAP (rs, cs, paintInside);
+	(*cs->paintInside) (s, sAttrib, transform, output, size);
+	WRAP (rs, cs, paintInside, rubikPaintInside);
+}
+
+static void
+rubikPreparePaintScreen (CompScreen *s,
+		int        ms)
+{
+	RUBIK_SCREEN (s);
+
+	UNWRAP (rs, s, preparePaintScreen);
+	(*s->preparePaintScreen) (s, ms);
+	WRAP (rs, s, preparePaintScreen, rubikPreparePaintScreen);
+}
+
+static Bool RubikDamageWindowRect(CompWindow *w, Bool initial, BoxPtr rect){
+
+    Bool status = TRUE;
+    RUBIK_SCREEN(w->screen);
+    //RUBIK_WINDOW(w);
+
+    damageScreen(w->screen);
+
+    UNWRAP(rs, w->screen, damageWindowRect);
+    status |= (*w->screen->damageWindowRect)(w, initial, rect);
+    //(*w->screen->damageWindowRect)(w, initial, &rw->rect);
+    WRAP(rs, w->screen, damageWindowRect, RubikDamageWindowRect);
+
+    // true if damaged something
+    return status;
+}
+
+static void 
+toggleWindowRubikEffect (CompWindow *w)
+{
+	
+/*
+	RUBIK_WINDOW(w);
+
+	aw->isAnaglyph = !aw->isAnaglyph;	
+			
+	if (matchEval (anaglyphGetExcludeMatch(w->screen), w))
+		aw->isAnaglyph = FALSE;
+
+	if(w->redirected)
+		damageScreen(w->screen);
+	
+	
+	addWindowDamage(w);
+	*/
+	
+	printf ("Have a good afternoon.\n");
+}
+
+void rubikGetRotation( CompScreen *s, float *x, float *v )
+{
+	RUBIK_SCREEN (s);
+    
+}
+
+static void
+RubikEnableOutputClipping (CompScreen 	      *s,
+			  const CompTransform *transform,
+			  Region	      region,
+			  CompOutput 	      *output)
+{
+
+	RUBIK_SCREEN(s);
+	CUBE_SCREEN (s);
+	
+	UNWRAP (rs, s, enableOutputClipping);
+	(*s->enableOutputClipping) (s, transform, region, output);
+	WRAP (rs, s, enableOutputClipping, RubikEnableOutputClipping);
+}
+
+static void 
+toggleRubikEffect (CompScreen *s)
+{
+	
+	RUBIK_SCREEN(s);
+	CUBE_SCREEN (s);
+	
+	rs->initiated = !(rs->initiated);
+	
+	if (rs->initiated) {
+		
+		//cs->rotationState = RotationManual;
+		//WRAP( rs, cs, getRotation, rubikGetRotation );
+	}
+	else {
+		//cs->rotationState = RotationNone;
+		//UNWRAP (rs, cs, getRotation);
+	}
+	
+	/*CompWindow *w;
+
+	for (w = s->windows; w; w = w->next);
+		if (w)
+			toggleWindowRubikEffect (w);
+	*/
+	
+	//printf ("Have a good day.\n");
+}
+
+static Bool
+rubikPrepareToggle (CompDisplay *d,
+			CompAction *action,
+			CompActionState state,
+			CompOption *option,
+			int nOption)
+{
+	CompScreen *s;
+	Window     xid;
+
+	xid = getIntOptionNamed (option, nOption, "root", 0);
+
+	s = findScreenAtDisplay (d, xid);
+
+    	if (s){
+		toggleRubikEffect (s);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static Bool
+rubikPrepareWindowToggle (CompDisplay *d,
+			CompAction *action,
+			CompActionState state,
+			CompOption *option,
+			int nOption)
+{
+	CompWindow *w;
+	Window xid;
+	
+	xid = getIntOptionNamed(option, nOption, "window", 0);
+	
+	w = findWindowAtDisplay(d, xid);
+
+	if (w->attrib.override_redirect)
+		return FALSE;
+
+	if (w){
+		toggleWindowRubikEffect(w);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static void
+rubikDonePaintScreen (CompScreen * s)
+{
+	RUBIK_SCREEN (s);
+
+	if (rs->damage)
+	{
+		damageScreen (s);
+		rs->damage = FALSE;
+	}
+
+	UNWRAP (rs, s, donePaintScreen);
+	(*s->donePaintScreen) (s);
+	WRAP (rs, s, donePaintScreen, rubikDonePaintScreen);
+}
+
+static Bool RubikPaintOutput(CompScreen *s, const ScreenPaintAttrib *sAttrib, 
+	const CompTransform *transform, Region region, CompOutput *output, unsigned int mask){
+
+    Bool wasCulled, status;
+	wasCulled = glIsEnabled(GL_CULL_FACE);
+
+    //CompTransform zTransform;
+    //float x, y;
+    //int j;
+
+    RUBIK_SCREEN(s);
+    //RUBIK_DISPLAY(s->display);
+
+    if(rs->initiated)
+	mask |= PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK;
+
+    UNWRAP(rs, s, paintOutput);
+    status = (*s->paintOutput)(s, sAttrib, transform, region, output, mask);
+    WRAP(rs, s, paintOutput, RubikPaintOutput);
+
+    return status;
+}
+
+static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib, 
+	const CompTransform *transform, Region region, unsigned int mask){
+
+	CompTransform wTransform = *transform;
+	//glDisable(GL_CULL_FACE);
+
+	Bool wasCulled = glIsEnabled(GL_CULL_FACE);
+	Bool status;
+
+	RUBIK_SCREEN(w->screen);
+	RUBIK_WINDOW(w);
+
+	//syncWindowPosition (w);
+
+	mask |= PAINT_WINDOW_TRANSFORMED_MASK;
+
+	//if (w->screen->x==0 ) {
+	if (rs->initiated) {
+
+		if(wasCulled)
+			glDisable(GL_CULL_FACE);
+
+		float winX = WIN_REAL_X(w) + WIN_REAL_W(w)/2.0+w->screen->x*w->screen->width;
+		float screenW = w->screen->width;
+		//printf ("\nwin: %f\n",winX);
+		//printf ("screen: %f\n",screenW);
+
+		if ((int) (winX/screenW)==0 && !w->desktop && !w->hidden) {
+
+			memcpy (rs->tempTransform, &wTransform, sizeof (CompTransform));
+
+			glDisable (GL_CLIP_PLANE0);
+			glDisable (GL_CLIP_PLANE1);
+			glDisable (GL_CLIP_PLANE2);
+			glDisable (GL_CLIP_PLANE3);
+
+			GLdouble clipPlane4[] = { 1.0,  0, 0, 0 };
+			GLdouble clipPlane5[] = { -1, 0.0, 0, w->screen->width/vSize };
+
+
+			int i;
+			for (i=0; i<vSize; i++) {
+
+				if (i!=0) memcpy (&wTransform, rs->tempTransform, sizeof (CompTransform));
+
+				clipPlane4[3] = -i*w->screen->width/vSize;
+				clipPlane5[3] = (i+1)*w->screen->width/vSize;
+				glClipPlane (GL_CLIP_PLANE4, clipPlane4);
+				glClipPlane (GL_CLIP_PLANE5, clipPlane5);
+				glEnable (GL_CLIP_PLANE4);
+				glEnable (GL_CLIP_PLANE5);
+
+
+				matrixScale (&wTransform, 1.0f, 1.0f, 1.0f/ w->screen->width);
+
+				matrixTranslate(&wTransform, 
+						(WIN_REAL_X(w) + WIN_REAL_W(w)/2.0), 
+						(WIN_REAL_Y(w) + WIN_REAL_H(w)/2.0),
+						-distance*w->screen->width);
+
+				rw->psi = 0;
+				rw->th[i]  = rw->th[i]+speedFactor*(i+1);
+
+				if (rw->th[i]>=180) rw->th[i]=180;
+
+				rw->th[i] = fmodf(rw->th[i], 360);
+
+				matrixRotate(&wTransform, rw->psi, 0.0, 0.0, 1.0);
+				matrixRotate(&wTransform, -rw->th[i], 1.0, 0.0, 0.0);
+
+				matrixTranslate(&wTransform, 
+						-(WIN_REAL_X(w) + WIN_REAL_W(w)/2.0), 
+						-(WIN_REAL_Y(w) + WIN_REAL_H(w)/2.0),
+						distance*w->screen->width);
+				
+				UNWRAP(rs, w->screen, paintWindow);
+				status = (*w->screen->paintWindow)(w, attrib, &wTransform, region, mask);
+				WRAP(rs, w->screen, paintWindow, RubikPaintWindow);
+			}
+		}
+		else {
+			UNWRAP(rs, w->screen, paintWindow);
+			status = (*w->screen->paintWindow)(w, attrib, &wTransform, region, mask);
+			WRAP(rs, w->screen, paintWindow, RubikPaintWindow);
+		}
+		
+	}
+	else {
+		rw->z = distance;
+		rw->psi = 0;
+		
+		int i;
+		for (i=0; i<vSize; i++)
+			rw->th[i]  = 0;
+
+
+		glEnable (GL_CLIP_PLANE0);
+		glEnable (GL_CLIP_PLANE1);
+		glEnable (GL_CLIP_PLANE2);
+		glEnable (GL_CLIP_PLANE3);
+		
+		if(wasCulled)
+			glDisable(GL_CULL_FACE);
+
+		UNWRAP(rs, w->screen, paintWindow);
+		status = (*w->screen->paintWindow)(w, attrib, &wTransform, region, mask);
+		WRAP(rs, w->screen, paintWindow, RubikPaintWindow);
+	}
+
+
+
+	if(wasCulled)
+		glEnable(GL_CULL_FACE);
+
+	glDisable (GL_CLIP_PLANE4);
+	glDisable (GL_CLIP_PLANE5);
+
+	return status;
+}
+
+
+
+static Bool
+rubikInitDisplay (CompPlugin  *p,
+		CompDisplay *d)
+{
+	RubikDisplay *rd;
+
+	if (!checkPluginABI ("core", CORE_ABIVERSION) ||
+			!checkPluginABI ("cube", CUBE_ABIVERSION))
+		return FALSE;
+
+	if (!getPluginDisplayIndex (d, "cube", &cubeDisplayPrivateIndex))
+		return FALSE;
+
+	rd = malloc (sizeof (RubikDisplay));
+
+	if (!rd)
+		return FALSE;
+
+	rd->screenPrivateIndex = allocateScreenPrivateIndex (d);
+
+	if (rd->screenPrivateIndex < 0)
+	{
+		free (rd);
+		return FALSE;
+	}
+
+	rubikSetToggleKeyInitiate    (d, rubikPrepareToggle);
+	rubikSetToggleButtonInitiate (d, rubikPrepareToggle);
+	rubikSetToggleWindowKeyInitiate (d, rubikPrepareWindowToggle);
+	
+	d->base.privates[rubikDisplayPrivateIndex].ptr = rd;
+
+	return TRUE;
+}
+
+static void
+rubikFiniDisplay (CompPlugin  *p,
+		CompDisplay *d)
+{
+	RUBIK_DISPLAY (d);
+
+	freeScreenPrivateIndex (d, rd->screenPrivateIndex);
+	free (rd);
+}
+
+static Bool
+rubikInitScreen (CompPlugin *p,
+		CompScreen *s)
+{
+	static const float ambient[]  = { 0.3, 0.3, 0.3, 1.0 };
+	static const float diffuse[]  = { 1.0, 1.0, 1.0, 1.0 };
+	static const float position[] = { 0.0, 1.0, 0.0, 0.0 };
+
+	RubikScreen *rs;
+
+	RUBIK_DISPLAY (s->display);
+	CUBE_SCREEN (s);
+
+	rs = malloc (sizeof (RubikScreen) );
+
+	if (!rs)
+		return FALSE;
+
+    if( (rs->windowPrivateIndex = allocateWindowPrivateIndex(s)) < 0){
+    	free(rs);
+    	return FALSE;
+    }
+
+	s->base.privates[rd->screenPrivateIndex].ptr = rs;
+
+	rs->damage = FALSE;
+
+	glLightfv (GL_LIGHT1, GL_AMBIENT, ambient);
+	glLightfv (GL_LIGHT1, GL_DIFFUSE, diffuse);
+	glLightfv (GL_LIGHT1, GL_POSITION, position);
+
+	initRubik (s);
+
+
+	rubikSetSpeedFactorNotify (s, rubikSpeedFactorOptionChange);
+	rubikSetVerticalSizeNotify (s, rubikScreenOptionChange);
+
+    rs->initiated = FALSE;
+    
+	
+	WRAP (rs, s, donePaintScreen, rubikDonePaintScreen);
+	WRAP (rs, s, preparePaintScreen, rubikPreparePaintScreen);
+	WRAP (rs, cs, clearTargetOutput, rubikClearTargetOutput);
+	WRAP (rs, cs, paintInside, rubikPaintInside);
+	
+    WRAP(rs, s, paintWindow, RubikPaintWindow);
+    WRAP(rs, s, paintOutput, RubikPaintOutput);
+    WRAP(rs, s, damageWindowRect, RubikDamageWindowRect);
+
+    WRAP (rs, s, enableOutputClipping, RubikEnableOutputClipping);
+
+	return TRUE;
+}
+
+static void
+rubikFiniScreen (CompPlugin *p,
+		CompScreen *s)
+{
+	RUBIK_SCREEN (s);
+	CUBE_SCREEN (s);
+
+	freeRubik (s);
+
+	UNWRAP (rs, s, donePaintScreen);
+	UNWRAP (rs, s, preparePaintScreen);
+	UNWRAP (rs, cs, clearTargetOutput);
+	UNWRAP (rs, cs, paintInside);
+
+    UNWRAP(rs, s, paintWindow);
+    UNWRAP(rs, s, paintOutput);
+    UNWRAP(rs, s, damageWindowRect);
+    
+    UNWRAP (rs, s, enableOutputClipping);
+    
+	free (rs);
+}
+
+static Bool
+rubikInitWindow(CompPlugin *p, CompWindow *w){
+    RubikWindow *rw;
+    RUBIK_SCREEN(w->screen);
+
+    rw = (RubikWindow*) malloc( sizeof(RubikWindow) );
+    
+    if (!rw)
+    	return FALSE;
+
+    rw->psi = 0.0;
+    
+    rw->th = malloc (10*sizeof(float));
+    
+    int i;
+    for (i=0; i<vSize; i++) 
+    	rw->th[i] = 0.0;
+
+    rw->rotated = FALSE;
+    
+    w->base.privates[rs->windowPrivateIndex].ptr = rw;
+
+    return TRUE;
+}
+
+static void
+rubikFiniWindow(CompPlugin *p, CompWindow *w){
+
+    RUBIK_WINDOW(w);
+    //RUBIK_DISPLAY(w->screen->display);
+
+    if (rw) {
+    	if (rw->th)
+    			free(rw->th);
+    	free(rw); 
+    }
+}
+static Bool
+rubikInit (CompPlugin * p)
+{
+	rubikDisplayPrivateIndex = allocateDisplayPrivateIndex();
+
+	if (rubikDisplayPrivateIndex < 0)
+		return FALSE;
+
+	return TRUE;
+}
+
+static void
+rubikFini (CompPlugin * p)
+{
+	if (rubikDisplayPrivateIndex >= 0)
+		freeDisplayPrivateIndex (rubikDisplayPrivateIndex);
+}
+
+static CompBool
+rubikInitObject (CompPlugin *p,
+		CompObject *o)
+{
+	static InitPluginObjectProc dispTab[] = {
+			(InitPluginObjectProc) 0, /* InitCore */
+			(InitPluginObjectProc) rubikInitDisplay,
+			(InitPluginObjectProc) rubikInitScreen,
+			(InitPluginObjectProc) rubikInitWindow
+	};
+
+	RETURN_DISPATCH (o, dispTab, ARRAY_SIZE (dispTab), TRUE, (p, o));
+}
+
+static void
+rubikFiniObject (CompPlugin *p,
+		CompObject *o)
+{
+	static FiniPluginObjectProc dispTab[] = {
+			(FiniPluginObjectProc) 0, /* FiniCore */
+			(FiniPluginObjectProc) rubikFiniDisplay,
+			(FiniPluginObjectProc) rubikFiniScreen,
+			(FiniPluginObjectProc) rubikFiniWindow,
+	};
+
+	DISPATCH (o, dispTab, ARRAY_SIZE (dispTab), (p, o));
+}
+
+CompPluginVTable rubikVTable = {
+
+		"rubik",
+		0,
+		rubikInit,
+		rubikFini,
+		rubikInitObject,
+		rubikFiniObject,
+		0,
+		0
+};
+
+
+CompPluginVTable *
+getCompPluginInfo (void)
+{
+	return &rubikVTable;
+}
