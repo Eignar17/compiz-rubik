@@ -24,11 +24,7 @@
  * Loosely based on freewins, atlantis, and anaglyph.
  */
 
-#include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <signal.h>
-#include <unistd.h>
 #include <math.h>
 
 
@@ -367,17 +363,6 @@ void rubikGetRotation( CompScreen *s, float *x, float *v )
     
 }
 
-static void
-RubikDisableOutputClipping (CompScreen 	      *s)
-{
-
-	RUBIK_SCREEN(s);
-	
-	UNWRAP (rs, s, disableOutputClipping);
-	(*s->disableOutputClipping) (s);
-	WRAP (rs, s, disableOutputClipping, RubikDisableOutputClipping);
-}
-
 static void 
 toggleRubikEffect (CompScreen *s)
 {
@@ -440,26 +425,6 @@ rubikDonePaintScreen (CompScreen * s)
 	UNWRAP (rs, s, donePaintScreen);
 	(*s->donePaintScreen) (s);
 	WRAP (rs, s, donePaintScreen, rubikDonePaintScreen);
-}
-
-static Bool RubikPaintOutput(CompScreen *s, const ScreenPaintAttrib *sAttrib, 
-	const CompTransform *transform, Region region, CompOutput *output, unsigned int mask){
-
-    Bool wasCulled, status;
-	wasCulled = glIsEnabled(GL_CULL_FACE);
-
-    RUBIK_SCREEN(s);
-
-    if(rs->initiated) {
-    	//mask |= PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK;
-		//mask |= PAINT_SCREEN_REGION_MASK;
-    }
-
-    UNWRAP(rs, s, paintOutput);
-    status = (*s->paintOutput)(s, sAttrib, transform, region, output, mask);
-    WRAP(rs, s, paintOutput, RubikPaintOutput);
-
-    return status;
 }
 
 static void
@@ -869,7 +834,6 @@ rubikInitScreen (CompPlugin *p,
 	WRAP (rs, cs, paintInside, rubikPaintInside);
 	
     WRAP (rs, s, paintWindow, RubikPaintWindow);
-    WRAP (rs, s, paintOutput, RubikPaintOutput);
     WRAP (rs, s, drawWindow, RubikDrawWindow);
     WRAP (rs, s, paintTransformedOutput, RubikPaintTransformedOutput);
     WRAP (rs, s, damageWindowRect, RubikDamageWindowRect);
