@@ -119,6 +119,9 @@ typedef struct _RubikScreen
 	float *th;
 	float *oldTh;
 
+    Vertex *vertices2; /* for extra side wall detail in sphere deformation */
+     unsigned int *indices2;
+	
 	float *psi;
 	float *oldPsi;
 
