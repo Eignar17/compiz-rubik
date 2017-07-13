@@ -189,11 +189,25 @@ static void rubikPaintInside (CompScreen *s,
 	
 	ScreenPaintAttrib sA = *sAttrib;
 	CompTransform mT = *transform;
+  int new_hsize = s->hsize * cs->nOutput;
 
-	sA.yRotate += cs->invert * (360.0f / size) *
-	              (cs->xRotations - (s->x * cs->nOutput));
+    int drawDeformation = (rs->oldProgress == 0.0f ? getCurrentDeformation(s) :
+						     getDeformationMode (s));
+	
+    { /* let fish swim in their expanded enclosure without fully resetting */
+	initWorldVariables (s);
+    }
 
-	(*s->applyScreenTransform) (s, &sA, output, &mT);
+    if (rubikGetShowtempTransform (s) ||rubikGetShowfaces (s))
+    {
+	updateDeformation (s, drawDeformation);
+	updateHeight (as->tempTransform, rubikGetShowfaces (s) ? rs->faces : NULL, drawDeformation);
+    }
+
+    sA.yRotate += cs->invert * (360.0f / size) * (cs->xRotations -
+	          (s->x * cs->nOutput));
+
+    (*s->applyScreenTransform)(s, &sA, output, &mT);
 
 	glPushMatrix();
 
