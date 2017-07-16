@@ -178,7 +178,6 @@ static void rubikPaintInside (CompScreen *s,
 	RUBIK_SCREEN (s);
 	CUBE_SCREEN (s);
 
-	if (hSize!=s->hsize) updateRubik (s);
 
 	/*static const float mat_shininess[]      = { 60.0 };
 	static const float mat_specular[]       = { 0.8, 0.8, 0.8, 1.0 };
@@ -189,6 +188,31 @@ static void rubikPaintInside (CompScreen *s,
 	
 	ScreenPaintAttrib sA = *sAttrib;
 	CompTransform mT = *transform;
+	
+        int new_hsize = s->hsize * cs->nOutput;
+ 
+       int drawDeformation = (rs->oldProgress == 0.0f ? getCurrentDeformation(s) :
+						     getDeformationMode (s));
+	
+       if (rubikGetShowtempTransform(s))
+	  rs->tempTransformHeight =rubikGettempTransformHeight(s) * 100000 - 50000;
+        else
+	  rs->tempTransformHeight = 50000;
+
+    ratio = calculateScreenRatio (s);
+       if (new_hsize < rs->hsize || fabsf (ratio - rs->ratio) > 0.0001)
+	 updaterubik (s);
+    else if (new_hsize > rs->hsize)
+	        { /* let fish swim in their expanded enclosure without fully resetting */
+	initWorldVariables (s);
+    }
+
+    if (rubikGetShowWater (s) || rubikGetShowWaterWire (s) ||
+	rubikGetShowGround (s))
+    {
+	updateDeformation (s, drawDeformation);
+	updateHeight (rs->tempTransform, rubikGetShowfaces (s) ? rs->faces : NULL, drawDeformation);
+    }
 
 	sA.yRotate += cs->invert * (360.0f / size) *
 	              (cs->xRotations - (s->x * cs->nOutput));
