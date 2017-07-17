@@ -66,6 +66,17 @@ extern int cubeDisplayPrivateIndex;
 #define RED			11
 #define YELLOW		12
 #define WHITE		13
+/*
+ * groups to separate fish for calculating boidsAngles
+ * at each time slice only one of the groups will have the boidsAngles updated
+*/
+#define NUM_GROUPS 6
+
+
+/* matching values from cubeaddon plugin */
+#define DeformationNone		0
+#define DeformationCylinder	1
+#define DeformationSphere	2
 
 typedef struct _RubikDisplay
 {
