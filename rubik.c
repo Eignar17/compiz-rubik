@@ -207,8 +207,7 @@ static void rubikPaintInside (CompScreen *s,
 	initWorldVariables (s);
     }
 
-    if (rubikGetShowWater (s) || rubikGetShowWaterWire (s) ||
-	rubikGetShowGround (s))
+    if (rubikGetShowempTransform (s) ||rubikGetShowfaces (s))
     {
 	updateDeformation (s, drawDeformation);
 	updateHeight (rs->tempTransform, rubikGetShowfaces (s) ? rs->faces : NULL, drawDeformation);
