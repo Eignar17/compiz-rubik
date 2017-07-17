@@ -94,6 +94,12 @@ typedef struct _faceRec
 faceRec;
 
 
+typedef struct _Vertex
+{
+    float v[3];
+    float n[3];
+}
+Vertex;
 
 typedef struct _RubikScreen
 {
