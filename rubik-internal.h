@@ -73,12 +73,21 @@ typedef struct _RubikDisplay
 }
 RubikDisplay;
 
+typedef struct _Vertex
+{
+    float v[3];
+    float n[3];
+}
+Vertex;
+
 typedef struct _faceRec
 {
 	float  color[4];
 	
 	float **th;
-	
+	    Vertex *vertices2; /* for extra side wall detail in sphere deformation */
+    unsigned int *indices2;
+
 	}
 faceRec;
 
@@ -135,11 +144,19 @@ RubikScreen;
 typedef struct _RubikWindow{
 	float x, y, z;
 	Bool rotated;
-	
+	    Vertex *vertices2; /* for extra side wall detail in sphere deformation */
+    unsigned int *indices2;
+
     DrawWindowGeometryProc drawWindowGeometry;
 }
 RubikWindow;
 
+/* utility methods */
+int
+getCurrentDeformation(CompScreen *s);
+
+int
+getDeformationMode(CompScreen *s);
 
 void rubikGetRotation( CompScreen *s, float *x, float *v );
 
