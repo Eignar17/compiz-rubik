@@ -194,24 +194,13 @@ static void rubikPaintInside (CompScreen *s,
        int drawDeformation = (rs->oldProgress == 0.0f ? getCurrentDeformation(s) :
 						     getDeformationMode (s));
 	
-       if (rubikGetShowtempTransform(s))
-	  rs->tempTransformHeight =rubikGettempTransformHeight(s) * 100000 - 50000;
-        else
-	  rs->tempTransformHeight = 50000;
 
     ratio = calculateScreenRatio (s);
        if (new_hsize < rs->hsize || fabsf (ratio - rs->ratio) > 0.0001)
 	 updaterubik (s);
     else if (new_hsize > rs->hsize)
 	        { /* let fish swim in their expanded enclosure without fully resetting */
-	initWorldVariables (s);
-    }
 
-    if (rubikGetShowempTransform (s) ||rubikGetShowfaces (s))
-    {
-	updateDeformation (s, drawDeformation);
-	updateHeight (rs->tempTransform, rubikGetShowfaces (s) ? rs->faces : NULL, drawDeformation);
-    }
 
 	sA.yRotate += cs->invert * (360.0f / size) *
 	              (cs->xRotations - (s->x * cs->nOutput));
@@ -302,7 +291,11 @@ static void rubikPaintInside (CompScreen *s,
 				if (coloredSides) {
 					glColor4fv (rs->faces[i].color);
 				}
-				if (rubikGetRotateHorizontally(s)) {
+				if (rubikGetRotateHorizontally(s))
+{
+	updateDeformation (s, drawDeformation);
+	updateHeight (rs->tempTransform, rubikGetRotateHorizontally (s) ? rs->rubikGetRotateHorizontally : NULL, drawDeformation);
+    }
 					for (j=0; j<hStrips; j++) {
 
 						glPushMatrix();
