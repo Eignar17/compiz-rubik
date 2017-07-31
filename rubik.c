@@ -178,6 +178,7 @@ static void rubikPaintInside (CompScreen *s,
 	RUBIK_SCREEN (s);
 	CUBE_SCREEN (s);
 
+	if (hSize!=s->hsize) updateRubik (s);
 
 	/*static const float mat_shininess[]      = { 60.0 };
 	static const float mat_specular[]       = { 0.8, 0.8, 0.8, 1.0 };
@@ -188,19 +189,6 @@ static void rubikPaintInside (CompScreen *s,
 	
 	ScreenPaintAttrib sA = *sAttrib;
 	CompTransform mT = *transform;
-	
-        int new_hsize = s->hsize * cs->nOutput;
- 
-       int drawDeformation = (rs->oldProgress == 0.0f ? getCurrentDeformation(s) :
-						     getDeformationMode (s));
-	
-
-    ratio = calculateScreenRatio (s);
-       if (new_hsize < rs->hsize || fabsf (ratio - rs->ratio) > 0.0001)
-	 updaterubik (s);
-    else if (new_hsize > rs->hsize)
-	        { /* let fish swim in their expanded enclosure without fully resetting */
-
 
 	sA.yRotate += cs->invert * (360.0f / size) *
 	              (cs->xRotations - (s->x * cs->nOutput));
@@ -268,7 +256,16 @@ static void rubikPaintInside (CompScreen *s,
 			glEnable (GL_DEPTH_TEST);
 
 			if (coloredSides) {
+			if (currentDeformation == DeformationSphere &&
+	    w->vertices2 && w->indices2)
+	{
+	    v = (float *) w->vertices2;
 				glEnable (GL_COLOR_MATERIAL);
+	if (currentDeformation == DeformationSphere &&
+	    w->vertices2 && w->indices2)
+	{
+	    v = (float *) w->vertices2;
+		
 				glDisable (GL_TEXTURE_2D);
 			}
 			//glColor4f (0.4, 0.3, 0.0, 1.0);
@@ -291,11 +288,7 @@ static void rubikPaintInside (CompScreen *s,
 				if (coloredSides) {
 					glColor4fv (rs->faces[i].color);
 				}
-				if (rubikGetRotateHorizontally(s))
-{
-	updateDeformation (s, drawDeformation);
-	updateHeight (rs->tempTransform, rubikGetRotateHorizontally (s) ? rs->rubikGetRotateHorizontally : NULL, drawDeformation);
-    }
+				if (rubikGetRotateHorizontally(s)) {
 					for (j=0; j<hStrips; j++) {
 
 						glPushMatrix();
@@ -629,6 +622,72 @@ rubikDonePaintScreen (CompScreen * s)
 	UNWRAP (rs, s, donePaintScreen);
 	(*s->donePaintScreen) (s);
 	WRAP (rs, s, donePaintScreen, rubikDonePaintScreen);
+}
+
+void
+rubikupdateDeformation (CompScreen *s,
+                   int currentDeformation)
+{
+    RUBIK_SCREEN (s);
+    CUBE_SCREEN (s);
+
+    static const float floatErr = 0.0001f;
+
+    Bool deform = FALSE;
+
+    float progress, dummy;
+    (*cs->getRotation) (s, &dummy, &dummy, &progress);
+
+    if (currentDeformation == DeformationNone)
+    {
+	if (rs->oldProgress == 0.0f)
+	    return;
+
+	rs->oldProgress = 0.0f;
+	progress = 0.0f;
+    }
+    else
+    {
+	if (fabsf (progress) < floatErr)
+	    progress = 0.0f;
+	else if (fabsf (1.0f - progress) < floatErr)
+	    progress = 1.0f;
+
+	if ((rs->oldProgress != 0.0f || progress != 0.0f) &&
+		(rs->oldProgress != 1.0f || progress != 1.0f))
+	{
+	    if (progress == 0.0f || progress == 1.0f)
+	    {
+		if (rs->oldProgress != progress)
+		{
+		    deform = TRUE;
+		    rs->oldProgress = progress;
+		}
+	    }
+	    else if (fabsf (rs->oldProgress - progress) >= floatErr)
+	    {
+		deform = TRUE;
+		rs->oldProgress = progress;
+	    }
+	}
+    }
+
+    if (deform)
+    {
+	if (rubikGetRotateDesktop (s))
+	{
+	    switch (currentDeformation)
+	    {
+	    case DeformationNone :
+	    case DeformationCylinder :
+		deformCylinder(s, rs->rubikGetRotateDesktop, progress);
+		break;
+
+	    case DeformationSphere :
+		deformSphere(s, rs->rubikGetRotateDesktop, progress, -0.5, FALSE);
+	    }
+	}
+    }
 }
 
 static Bool RubikPaintOutput(CompScreen *s, const ScreenPaintAttrib *sAttrib, 
