@@ -148,6 +148,8 @@ typedef struct _RubikScreen
 
     faceRec *faces;
     
+   float oldProgress; 
+	
     int numDesktopWindows;
 }
 RubikScreen;
@@ -175,6 +177,13 @@ float maximum(float,float); //nor did it have max or fmaxf!
 float symmDistr(void); //symmetric distribution
 void setColor(float *, float, float, float, float, float, float);
 void setSpecifiedColor (float *, int);
+
+/* utility methods */
+int
+getCurrentDeformation(CompScreen *s);
+
+int
+getDeformationMode(CompScreen *s);
 
 //maybe define a struct for these values
 float speedFactor; // global variable (fish/crab speeds multiplied by this value)
