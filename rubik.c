@@ -1270,7 +1270,8 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 				matrixTranslate(&wTransform, 0, 0, 0.005*w->activeNum);
 
 				
-				status = (*w->screen->paintWindow)(w, attrib, &wTransform, region, mask);
+	    status = (*w->screen->paintWindow)(w, attrib, &wTransform, region,
+					mask | PAINT_WINDOW_TRANSFORMED_MASK);
 			}
 
 		}
@@ -1294,7 +1295,8 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 			
 			matrixTranslate(&wTransform, 0, 0, 0.005*w->activeNum);
 			
-			status = (*w->screen->paintWindow)(w, attrib, &wTransform, region, mask);
+	    status = (*w->screen->paintWindow)(w, attrib, &wTransform, region,
+					mask | PAINT_WINDOW_TRANSFORMED_MASK);
 			
 		}
 
@@ -1328,7 +1330,8 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 
 		}
 		else {
-			status = (*w->screen->paintWindow)(w, attrib, &wTransform, region, mask);
+	    status = (*w->screen->paintWindow)(w, attrib, &wTransform, region,
+					mask | PAINT_WINDOW_TRANSFORMED_MASK);
 		}
 	}
 	else {
@@ -1351,7 +1354,8 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 		if(wasCulled)
 			glDisable(GL_CULL_FACE);
 
-		status = (*w->screen->paintWindow)(w, attrib, &wTransform, region, mask);
+	    status = (*w->screen->paintWindow)(w, attrib, &wTransform, region,
+					mask | PAINT_WINDOW_TRANSFORMED_MASK);
 	}
 
 	WRAP(rs, w->screen, paintWindow, RubikPaintWindow);
