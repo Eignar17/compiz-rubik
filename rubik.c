@@ -1039,7 +1039,9 @@ static Bool RubikPaintOutput(CompScreen *s, const ScreenPaintAttrib *sAttrib,
     RUBIK_SCREEN(s);
 
     //if(rs->initiated) {
-    	mask |= PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK;
+	mask |= PAINT_SCREEN_TRANSFORMED_MASK |
+	        PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK |
+		PAINT_SCREEN_NO_OCCLUSION_DETECTION_MASK;
 		//mask |= PAINT_SCREEN_REGION_MASK;
     //}
 
