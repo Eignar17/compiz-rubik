@@ -1031,10 +1031,9 @@ rubikDonePaintScreen (CompScreen * s)
 }
 
 static Bool RubikPaintOutput(CompScreen *s, const ScreenPaintAttrib *sAttrib, 
-	const CompTransform *transform, Region region, CompOutput *output, unsigned int mask){
-
-    Bool wasCulled, status;
-	wasCulled = glIsEnabled(GL_CULL_FACE);
+	const CompTransform *transform, Region region, CompOutput *output, unsigned int mask)
+{
+    Bool status;
 
     RUBIK_SCREEN(s);
 
