@@ -1037,11 +1037,11 @@ static Bool RubikPaintOutput(CompScreen *s, const ScreenPaintAttrib *sAttrib,
 
     RUBIK_SCREEN(s);
 
-    //if(rs->initiated) {
+    if(rs->initiated) {
 	mask |= PAINT_SCREEN_TRANSFORMED_MASK |
-	        PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK;
-		//mask |= PAINT_SCREEN_REGION_MASK;
-    //}
+	        PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK |
+                PAINT_SCREEN_REGION_MASK;
+    }
 
     UNWRAP(rs, s, paintOutput);
     status = (*s->paintOutput)(s, sAttrib, transform, region, output, mask);
@@ -1076,8 +1076,8 @@ RubikDrawWindow (CompWindow           *w,
     
     if (rs->initiated) {
     	mask |= PAINT_WINDOW_TRANSFORMED_MASK |
-	        PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK;
-		//mask |= PAINT_SCREEN_REGION_MASK;
+	        PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK |
+                PAINT_SCREEN_REGION_MASK;
     }
 
    	UNWRAP (rs, s, drawWindow);
@@ -1190,8 +1190,8 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 	if (rs->initiated && !(rubikGetEnableOnManualRotate(w->screen) && cs->rotationState==RotationNone)) {
 
 	mask |= PAINT_SCREEN_TRANSFORMED_MASK |
-	        PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK;
-		//mask |= PAINT_SCREEN_REGION_MASK;
+	        PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK |
+		PAINT_SCREEN_REGION_MASK;
 
 		if(wasCulled)
 			glDisable(GL_CULL_FACE);
