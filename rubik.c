@@ -1271,7 +1271,7 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 				matrixTranslate(&wTransform, 0, 0, 0.005*w->activeNum);
 
 				
-	    status = (*w->screen->paintWindow)(w, attrib, &wTransform, region,
+	    status = (*w->paintWindow)(w, attrib, &rs->wTransform, region,
 					mask | PAINT_WINDOW_TRANSFORMED_MASK);
 			}
 
@@ -1331,7 +1331,7 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 
 		}
 		else {
-	    status = (*w->screen->paintWindow)(w, attrib, &wTransform, region,
+	    status = (*w->paintWindow)(w, attrib, &rs->wTransform, region,
 					mask | PAINT_WINDOW_TRANSFORMED_MASK);
 		}
 	}
@@ -1355,7 +1355,7 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 		if(wasCulled)
 			glDisable(GL_CULL_FACE);
 
-	    status = (*w->screen->paintWindow)(w, attrib, &wTransform, region,
+	    status = (*w->paintWindow)(w, attrib, &rs->wTransform, region,
 					mask | PAINT_WINDOW_TRANSFORMED_MASK);
 	}
 
@@ -1377,20 +1377,20 @@ rubikInitDisplay (CompPlugin  *p,
 {
 	RubikDisplay *rd;
 
-	if (!checkPluginABI ("core", CORE_ABIVERSION) ||
-			!checkPluginABI ("cube", CUBE_ABIVERSION))
+	if (!checkPluginABI ("core", CORE_ABIVERSION))
 		return FALSE;
-
+	
+	if (!checkPluginABI ("cube", CUBE_ABIVERSION))
+		return FALSE;
+	
 	if (!getPluginDisplayIndex (d, "cube", &cubeDisplayPrivateIndex))
 		return FALSE;
 
 	rd = malloc (sizeof (RubikDisplay));
-
 	if (!rd)
 		return FALSE;
 
 	rd->screenPrivateIndex = allocateScreenPrivateIndex (d);
-
 	if (rd->screenPrivateIndex < 0)
 	{
 		free (rd);
@@ -1433,7 +1433,8 @@ rubikInitScreen (CompPlugin *p,
 	if (!rs)
 		return FALSE;
 
-    if( (rs->windowPrivateIndex = allocateWindowPrivateIndex(s)) < 0){
+    if( (rs->windowPrivateIndex = allocateWindowPrivateIndex(s);
+    if (tds->windowPrivateIndex < 0)
     	free(rs);
     	return FALSE;
     }
