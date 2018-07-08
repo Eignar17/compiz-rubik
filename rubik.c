@@ -1038,12 +1038,29 @@ static Bool RubikPaintOutput(CompScreen *s, const ScreenPaintAttrib *sAttrib,
 
     RUBIK_SCREEN(s);
 
+	CompPlugin *p;
+
     //if(rs->initiated) {
 	mask |= PAINT_SCREEN_TRANSFORMED_MASK |
 	        PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK |
 		PAINT_SCREEN_NO_OCCLUSION_DETECTION_MASK;
 		//mask |= PAINT_SCREEN_REGION_MASK;
     //}
+
+	p = findActivePlugin ("cubeaddon");
+	if (p && p->vTable->getObjectOptions)
+	{
+	    CompOption *option;
+	    int	       nOption;
+
+	    option = (*p->vTable->getObjectOptions) (p, (CompObject *)s,
+						     &nOption);
+	    option = compFindOption (option, nOption, "deformation", 0);
+
+	    if (option)
+		tds->withDepth = option->value.i == 0;
+	}
+    }
 
     UNWRAP(rs, s, paintOutput);
     status = (*s->paintOutput)(s, sAttrib, transform, region, output, mask);
