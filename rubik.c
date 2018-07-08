@@ -1377,20 +1377,20 @@ rubikInitDisplay (CompPlugin  *p,
 {
 	RubikDisplay *rd;
 
-	if (!checkPluginABI ("core", CORE_ABIVERSION) ||
-			!checkPluginABI ("cube", CUBE_ABIVERSION))
+	if (!checkPluginABI ("core", CORE_ABIVERSION))
 		return FALSE;
-
+	
+	if (!checkPluginABI ("cube", CUBE_ABIVERSION))
+		return FALSE;
+	
 	if (!getPluginDisplayIndex (d, "cube", &cubeDisplayPrivateIndex))
 		return FALSE;
 
 	rd = malloc (sizeof (RubikDisplay));
-
 	if (!rd)
 		return FALSE;
 
 	rd->screenPrivateIndex = allocateScreenPrivateIndex (d);
-
 	if (rd->screenPrivateIndex < 0)
 	{
 		free (rd);
