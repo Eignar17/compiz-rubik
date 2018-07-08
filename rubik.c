@@ -296,7 +296,7 @@ static void rubikPaintInside (CompScreen *s,
 		int winCounter = 0, screenCounter = 0;
 		
 		CompWindow *w;
-		//CompScreen *screen;
+		CompScreen *screen;
 
 		int screenX = s->x; 
 
@@ -316,7 +316,7 @@ static void rubikPaintInside (CompScreen *s,
 				if (w->destroyed) continue;
 				if (w->hidden) continue;
 				if (w->invisible) continue;
-				//if (!w->desktop && !rubikGetPaintWindowContents(s)) continue;
+				if (!w->desktop && !rubikGetPaintWindowContents(s)) continue;
 
 				tempNumWindows++;
 			    }
@@ -325,8 +325,8 @@ static void rubikPaintInside (CompScreen *s,
 		    }
 		}
 
-		//if (!coloredSides)
-		 //   moveScreenViewport (s, screenX, 0, FALSE);
+		if (!coloredSides)
+		    moveScreenViewport (s, screenX, 0, FALSE);
 
 		
 		for (viewport = 0; viewport<4; viewport++) {
@@ -346,12 +346,12 @@ static void rubikPaintInside (CompScreen *s,
 				if (w->destroyed) continue;
 				if (w->hidden) continue;
 				if (w->invisible) continue;
-				//if (!w->desktop && !rubikGetPaintWindowContents(s)) continue;
+				if (!w->desktop && !rubikGetPaintWindowContents(s)) continue;
 				
 				enableTexture (s, w->texture, 
 						COMP_TEXTURE_FILTER_GOOD); 
 
-				//glEnable (w->texture->target);	
+				glEnable (w->texture->target);	
 			}
 			else {
 				if (winCounter>0)
@@ -405,11 +405,11 @@ static void rubikPaintInside (CompScreen *s,
 						else if (!rubikGetDesktopCaps(s) && square->side>=4)
 							continue;
 						else {
-							//float winX = WIN_REAL_X(w) + WIN_REAL_W(w)/2.0+((screen->x+screenCounter-1)%rs->hsize)*w->screen->width;
-							//float screenW = w->screen->width;
+							float winX = WIN_REAL_X(w) + WIN_REAL_W(w)/2.0+((screen->x+screenCounter-1)%rs->hsize)*w->screen->width;
+							float screenW = w->screen->width;
 							
-							//printf ("%i, %i\n", ((int) (winX/screenW)), w->screen->x);
-							//if (((int) (winX/screenW))!=square->side)
+							printf ("%i, %i\n", ((int) (winX/screenW)), w->screen->x);
+							if (((int) (winX/screenW))!=square->side)
 						    
 						    	if (windowOnAllViewports (w) && rubikGetDesktopCaps(s) && square->side>=4) {
 						    	    if (viewport!=screenX)
@@ -498,7 +498,7 @@ static void rubikPaintInside (CompScreen *s,
 						
 						
 
-						/*if (i==0)
+						if (i==0)
 							glRotatef (face->side[index]*90, 0, 1, 0);
 						if (i==2)
 							glRotatef (face->side[index]*90, 0, 1, 0);
@@ -506,7 +506,7 @@ static void rubikPaintInside (CompScreen *s,
 							glRotatef (face->side[index]*90, 0, 1, 0);
 						if (i==3)
 							glRotatef (face->side[index]*90, 0, 1, 0);
-*/
+
 						//glTranslatef (0,0,0.5-0.00005*(numWindows+1-winCounter)); //allow for layers
 						glTranslatef (0,0,0.5-0.00005*(numWindows+1-winCounter)); //allow for layers
 
@@ -572,16 +572,16 @@ static void rubikPaintInside (CompScreen *s,
 							wh1+=((float) hs-square->y   )/((float) hStrips);	
 							wh2+=((float) hs-square->y   )/((float) hStrips);	
 
-							//h2 = (h2-y)/height;
-							//h2 += y;
+							h2 = (h2-y)/height;
+							h2 += y;
 							
 							
 
 							
 							
-							//v1 = x;
-							//v2 = (v2-x)/width;
-							//v2 -= x/width;
+							v1 = x;
+							v2 = (v2-x)/width;
+							v2 -= x/width;
 						
 							v1 = (wv1-x)/width;
 							v2 = (wv2-x)/width;
@@ -934,14 +934,14 @@ static Bool RubikDamageWindowRect(CompWindow *w, Bool initial, BoxPtr rect){
 	Bool status = TRUE;
 	RUBIK_SCREEN(w->screen);
 	CUBE_SCREEN (w->screen);
-	//RUBIK_WINDOW(w);
+        RUBIK_WINDOW(w);
 
 	if (w->damaged || (rs->initiated && (cs->rotationState!=RotationNone || !rubikGetEnableOnManualRotate(w->screen))))
 		damageScreen(w->screen);
 
 	UNWRAP(rs, w->screen, damageWindowRect);
 	status |= (*w->screen->damageWindowRect)(w, initial, rect);
-	//(*w->screen->damageWindowRect)(w, initial, &rw->rect);
+	(*w->screen->damageWindowRect)(w, initial, &rw->rect);
 	WRAP(rs, w->screen, damageWindowRect, RubikDamageWindowRect);
 
 	// true if damaged something
@@ -950,7 +950,7 @@ static Bool RubikDamageWindowRect(CompWindow *w, Bool initial, BoxPtr rect){
 
 void rubikGetRotation( CompScreen *s, float *x, float *v )
 {
-	//RUBIK_SCREEN (s);
+	RUBIK_SCREEN (s);
     
 }
 
@@ -970,7 +970,7 @@ toggleRubikEffect (CompScreen *s)
 {
 	
 	RUBIK_SCREEN(s);
-	//CUBE_SCREEN (s);
+	CUBE_SCREEN (s);
 	
 	rs->initiated = !(rs->initiated);
 	
@@ -981,15 +981,15 @@ toggleRubikEffect (CompScreen *s)
 		rotationAxis = NRAND(3);
 
 		
-		//cs->rotationState = RotationManual;
-		//WRAP( rs, cs, getRotation, rubikGetRotation );
+		cs->rotationState = RotationManual;
+		WRAP( rs, cs, getRotation, rubikGetRotation );
 	}
 	else {
 		initFaces (s);
 		
-		//cs->rotationState = RotationNone;
+		cs->rotationState = RotationNone;
 		
-		//UNWRAP (rs, cs, getRotation);
+		UNWRAP (rs, cs, getRotation);
 	}
 }
 
@@ -1037,12 +1037,11 @@ static Bool RubikPaintOutput(CompScreen *s, const ScreenPaintAttrib *sAttrib,
 
     RUBIK_SCREEN(s);
 
-    //if(rs->initiated) {
+    if(rs->initiated) {
 	mask |= PAINT_SCREEN_TRANSFORMED_MASK |
-	        PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK |
-		PAINT_SCREEN_NO_OCCLUSION_DETECTION_MASK;
-		//mask |= PAINT_SCREEN_REGION_MASK;
-    //}
+	        PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK;
+		mask |= PAINT_SCREEN_REGION_MASK;
+    }
 
     UNWRAP(rs, s, paintOutput);
     status = (*s->paintOutput)(s, sAttrib, transform, region, output, mask);
@@ -1076,8 +1075,9 @@ RubikDrawWindow (CompWindow           *w,
     }
     
     if (rs->initiated) {
-    	mask |= PAINT_WINDOW_TRANSFORMED_MASK;
-		//mask |= PAINT_SCREEN_REGION_MASK;
+	mask |= PAINT_SCREEN_TRANSFORMED_MASK |
+	        PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK;
+		mask |= PAINT_SCREEN_REGION_MASK;
     }
 
    	UNWRAP (rs, s, drawWindow);
@@ -1093,7 +1093,7 @@ RubikAddWindowGeometry(CompWindow * w,
 		      CompMatrix * matrix,
 		      int nMatrix, Region region, Region clip)
 {
-    //RUBIK_WINDOW(w);
+    RUBIK_WINDOW(w);
     RUBIK_SCREEN(w->screen);
     CUBE_SCREEN (w->screen);
 
@@ -1104,8 +1104,8 @@ RubikAddWindowGeometry(CompWindow * w,
     if (rs->initiated) {
     	float winX = WIN_REAL_X(w) + WIN_REAL_W(w)/2.0+w->screen->x*w->screen->width;
     	float screenW = w->screen->width;
-    	//printf ("\nwin: %f\n",winX);
-    	//printf ("screen: %f\n",screenW);
+    	printf ("\nwin: %f\n",winX);
+    	printf ("screen: %f\n",screenW);
 
     	rs->oldClip = malloc (clip->numRects*sizeof(BOX));
 		memcpy (rs->oldClip, (clip->rects), clip->numRects*sizeof(BOX));
@@ -1113,10 +1113,10 @@ RubikAddWindowGeometry(CompWindow * w,
 		
     	if (!w->desktop && !w->hidden) {
 
-    		//for (i=0; i<region->numRects; i++) {
-    		//	region->rects[i].x1 = 0;
-    		//	region->rects[i].x2 = 1280;
-    		//}
+    		for (i=0; i<region->numRects; i++) {
+    			region->rects[i].x1 = 0;
+    			region->rects[i].x2 = 1280;
+    		}
 
     		for (i=0; i<clip->numRects; i++) {
     			clip->rects[i].x1 = 1280*((int) (winX/screenW)-w->screen->x);
@@ -1189,8 +1189,9 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 
 	if (rs->initiated && !(rubikGetEnableOnManualRotate(w->screen) && cs->rotationState==RotationNone)) {
 
-		mask |= PAINT_WINDOW_TRANSFORMED_MASK;
-		//mask |= PAINT_SCREEN_REGION_MASK;
+	mask |= PAINT_SCREEN_TRANSFORMED_MASK |
+	        PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK;
+		mask |= PAINT_SCREEN_REGION_MASK;
 
 		if(wasCulled)
 			glDisable(GL_CULL_FACE);
@@ -1257,7 +1258,7 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 						-rs->distance*w->screen->width);
 
 
-				//matrixRotate(&wTransform, rs->psi, 0.0, 0.0, 1.0);
+				matrixRotate(&wTransform, rs->psi, 0.0, 0.0, 1.0);
 				if ((int) (winX/screenW)==0)
 					matrixRotate(&wTransform, -rs->th[i], 1.0, 0.0, 0.0);
 				else
@@ -1468,9 +1469,9 @@ rubikInitScreen (CompPlugin *p,
     WRAP (rs, s, damageWindowRect, RubikDamageWindowRect);
     WRAP (rs, s, addWindowGeometry, RubikAddWindowGeometry);
 
-    //WRAP (rs, s, drawWindowTexture, RubikDrawWindowTexture);
+    WRAP (rs, s, drawWindowTexture, RubikDrawWindowTexture);
 
-    //WRAP (rs, s, disableOutputClipping, RubikDisableOutputClipping);
+    WRAP (rs, s, disableOutputClipping, RubikDisableOutputClipping);
 
     return TRUE;
 }
@@ -1496,9 +1497,9 @@ rubikFiniScreen (CompPlugin *p,
     UNWRAP (rs, s, damageWindowRect);
     UNWRAP (rs, s, addWindowGeometry);
 
-    //UNWRAP (rs, s, drawWindowTexture);
+    UNWRAP (rs, s, drawWindowTexture);
 
-    //UNWRAP (rs, s, disableOutputClipping);
+    UNWRAP (rs, s, disableOutputClipping);
 
     free(rs);
 }
@@ -1515,7 +1516,7 @@ rubikInitWindow(CompPlugin *p, CompWindow *w){
 
     w->base.privates[rs->windowPrivateIndex].ptr = rw;
 
-    //WRAP (rw, w, drawWindowGeometry, RubikDrawWindowGeometry);
+    WRAP (rw, w, drawWindowGeometry, RubikDrawWindowGeometry);
     
     return TRUE;
 }
@@ -1524,9 +1525,9 @@ static void
 rubikFiniWindow(CompPlugin *p, CompWindow *w){
 
     RUBIK_WINDOW(w);
-    //RUBIK_DISPLAY(w->screen->display);
+    RUBIK_DISPLAY(w->screen->display);
 
-   // UNWRAP (rw, w, drawWindowGeometry);
+    UNWRAP (rw, w, drawWindowGeometry);
     
     if (rw)
     	free(rw);
