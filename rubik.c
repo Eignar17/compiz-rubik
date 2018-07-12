@@ -217,7 +217,7 @@ rubikClearTargetOutput (CompScreen *s,
 	(*cs->clearTargetOutput) (s, xRotate, vRotate);
 	WRAP (rs, cs, clearTargetOutput, rubikClearTargetOutput);
 
-	glClear (GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 
@@ -280,13 +280,17 @@ static void rubikPaintInside (CompScreen *s,
 	glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
 	glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
 	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
-	
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
 
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_AUTO_NORMAL);
 	glEnable (GL_NORMALIZE);
+
+	glClearColor(0,0,0,1.0);
+	glClearDepth(20.0f);       // Set background depth to farthest
+	glDepthFunc(GL_LEQUAL);    // Set the type of depth-test
 
 	if (rs->initiated && rubikGetRotateDesktop(s)) {
 
