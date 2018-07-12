@@ -365,6 +365,7 @@ static void rubikPaintInside (CompScreen *s,
 			glDisable (GL_SHININESS);
 			glDisable(GL_LIGHTING);
 	                glDisable(GL_LIGHT0);
+			glDisable(GL_POSITION);
 	                glDisable(GL_DEPTH_TEST);
 	                glDisable(GL_AUTO_NORMAL);
 			glDisable (GL_TEXTURE_2D);
@@ -378,6 +379,7 @@ static void rubikPaintInside (CompScreen *s,
 			        glEnable (GL_SHININESS);
 				glEnable(GL_LIGHTING);
 	                        glEnable(GL_LIGHT0);
+				glEnable(GL_POSITION);
 	                        glEnable(GL_DEPTH_TEST);
 	                        glEnable(GL_AUTO_NORMAL);
 				glDisable (GL_TEXTURE_2D);
