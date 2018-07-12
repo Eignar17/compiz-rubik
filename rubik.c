@@ -282,10 +282,6 @@ static void rubikPaintInside (CompScreen *s,
 	glMaterialfv(GL_FRONT, GL_SHININESS, mat_shininess);
 	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
 
-	glEnable(GL_LIGHTING);
-	glEnable(GL_LIGHT0);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_AUTO_NORMAL);
 	glEnable (GL_NORMALIZE);
 
 	glClearColor(0,0,0,1.0);
@@ -364,11 +360,26 @@ static void rubikPaintInside (CompScreen *s,
 			glEnable (GL_NORMALIZE);
 			glDisable (GL_COLOR_MATERIAL);
 			glDisable (GL_CULL_FACE);
-			glEnable (GL_TEXTURE_2D);
-			glEnable (GL_DEPTH_TEST);
-
+			glDisable (GL_DIFFUSE);
+			glDisable (GL_SPECULAR);
+			glDisable (GL_SHININESS);
+			glDisable(GL_LIGHTING);
+	                glDisable(GL_LIGHT0);
+	                glDisable(GL_DEPTH_TEST);
+	                glDisable(GL_AUTO_NORMAL);
+			glDisable (GL_TEXTURE_2D);
+			glDisable (GL_DEPTH_TEST);
+                        
+			
 			if (coloredSides) {
 				glEnable (GL_COLOR_MATERIAL);
+			        glEnable (GL_DIFFUSE);
+			        glEnable (GL_SPECULAR);
+			        glEnable (GL_SHININESS);
+				glEnable(GL_LIGHTING);
+	                        glEnable(GL_LIGHT0);
+	                        glEnable(GL_DEPTH_TEST);
+	                        glEnable(GL_AUTO_NORMAL);
 				glDisable (GL_TEXTURE_2D);
 			}
 
