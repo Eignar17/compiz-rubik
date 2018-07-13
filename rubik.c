@@ -934,7 +934,7 @@ static Bool RubikPaintOutput(CompScreen *s, const ScreenPaintAttrib *sAttrib,
     RUBIK_SCREEN(s);
 
     if(rs->initiated) {
-    	//mask |= PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK;
+    	mask |= PAINT_SCREEN_WITH_TRANSFORMED_WINDOWS_MASK;
 		//mask |= PAINT_SCREEN_REGION_MASK;
     }
 
@@ -1154,15 +1154,15 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 			if (rubikGetEnableDepthTest(w->screen) && cs->rotationState!=RotationNone)
 				glEnable (GL_DEPTH_TEST);
 			
-			glDisable (GL_CLIP_PLANE0);
-			glDisable (GL_CLIP_PLANE1);
-			glDisable (GL_CLIP_PLANE2);
-			glDisable (GL_CLIP_PLANE3);
-
 			GLdouble oldClipPlane4[4];
 			GLdouble oldClipPlane5[4];
 			glGetClipPlane(GL_CLIP_PLANE4, oldClipPlane4);
 			glGetClipPlane(GL_CLIP_PLANE5, oldClipPlane5);
+			
+			GLboolean oldClipPlane0status = glIsEnabled(GL_CLIP_PLANE0);
+			GLboolean oldClipPlane1status = glIsEnabled(GL_CLIP_PLANE1);
+			GLboolean oldClipPlane2status = glIsEnabled(GL_CLIP_PLANE2);
+			GLboolean oldClipPlane3status = glIsEnabled(GL_CLIP_PLANE3);
 			
 			GLboolean oldClipPlane4status = glIsEnabled(GL_CLIP_PLANE4);
 			GLboolean oldClipPlane5status = glIsEnabled(GL_CLIP_PLANE5);
@@ -1173,7 +1173,12 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 
 			glClipPlane (GL_CLIP_PLANE4, clipPlane4);
 			glClipPlane (GL_CLIP_PLANE5, clipPlane5);
-			
+
+			glDisable (GL_CLIP_PLANE0);
+			glDisable (GL_CLIP_PLANE1);
+			glDisable (GL_CLIP_PLANE2);
+			glDisable (GL_CLIP_PLANE3);
+
 			glEnable (GL_CLIP_PLANE4);
 			glEnable (GL_CLIP_PLANE5);
 			
@@ -1240,6 +1245,20 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 			status = (*w->screen->paintWindow)(w, attrib, &wTransform, region, mask);
 			
 		}
+
+		if (oldClipPlane0status)
+			glEnable (GL_CLIP_PLANE0);
+		
+		if (oldClipPlane1status)
+		glEnable (GL_CLIP_PLANE1);
+		
+		if (oldClipPlane2status)
+		glEnable (GL_CLIP_PLANE2);
+		
+		if (oldClipPlane3status)
+		glEnable (GL_CLIP_PLANE3);
+		
+		
 		glDisable (GL_CLIP_PLANE4);
 		glDisable (GL_CLIP_PLANE5);
 
@@ -1278,11 +1297,7 @@ static Bool RubikPaintWindow(CompWindow *w, const WindowPaintAttrib *attrib,
 
 		
 
-		glEnable (GL_CLIP_PLANE0);
-		glEnable (GL_CLIP_PLANE1);
-		glEnable (GL_CLIP_PLANE2);
-		glEnable (GL_CLIP_PLANE3);
-		
+
 		if(wasCulled)
 			glDisable(GL_CULL_FACE);
 
