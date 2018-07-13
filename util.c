@@ -49,3 +49,63 @@ void setSpecifiedColor (float* color, int c) {
 	case WHITE:       setColor(color, 1,1,1,1,0,0); break;
 	}
 }
+void rotateClockwise (squareRec * square) {
+
+	int m,j,k;
+	
+	for (m=0; m<hStrips/2; m++) {
+		for (j=0; j<hStrips-1-2*m; j++) {
+			int pos1 = (vStrips-1-j-m);
+			int pos2 = j+m;
+			squareRec tempSquare2  = square[pos2*hStrips+m];
+			square[pos2*hStrips+m] = square[m*hStrips+pos1];
+			square[m*hStrips+pos1] = square[pos1*hStrips+(vStrips-1-m)];
+			square[pos1*hStrips+(vStrips-1-m)] = square[(vStrips-1-m)*hStrips+pos2];
+			square[(vStrips-1-m)*hStrips+pos2] = tempSquare2;
+		}
+	}
+	
+	for (k=0; k<vStrips; k++) {
+		for (j=0; j<hStrips; j++) {
+			square[j*hStrips+k].psi = (square[j*hStrips+k].psi+1)%4;
+		}
+	}
+	
+/*
+	int m;
+	for (m=0; m<hStrips/2; m++) {
+		for (j=0; j<hStrips-1-2*m; j++) {
+			int pos1 = (vStrips-1-j-m);
+			int pos2 = j+m;
+			squareRec tempSquare2  = (rs->faces[4].square[pos2*hStrips+m]);
+			rs->faces[4].square[pos2*hStrips+m] = rs->faces[4].square[m*hStrips+pos1];
+			rs->faces[4].square[m*hStrips+pos1] = rs->faces[4].square[pos1*hStrips+(vStrips-1-m)];
+			rs->faces[4].square[pos1*hStrips+(vStrips-1-m)] = rs->faces[4].square[(vStrips-1-m)*hStrips+pos2];
+			rs->faces[4].square[(vStrips-1-m)*hStrips+pos2] = tempSquare2;
+		}
+	}
+*/
+	
+}
+void rotateAnticlockwise (squareRec * square) {
+
+	int m,j,k;
+	
+	for (m=0; m<hStrips/2; m++) {
+		for (j=0; j<hStrips-1-2*m; j++) {
+			int pos1 = (vStrips-1-j-m);
+			int pos2 = j+m;
+			squareRec tempSquare2  = square[pos2*hStrips+m];
+			square[pos2*hStrips+m] = square[(vStrips-1-m)*hStrips+pos2];
+			square[(vStrips-1-m)*hStrips+pos2] = square[pos1*hStrips+(vStrips-1-m)];
+			square[pos1*hStrips+(vStrips-1-m)] = square[m*hStrips+pos1];
+			square[m*hStrips+pos1] = tempSquare2;
+		}
+	}
+	
+	for (k=0; k<vStrips; k++) {
+		for (j=0; j<hStrips; j++) {
+			square[j*hStrips+k].psi = (square[j*hStrips+k].psi+4-1)%4;
+		}
+	}
+}
