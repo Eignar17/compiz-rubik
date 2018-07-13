@@ -73,13 +73,23 @@ typedef struct _RubikDisplay
 }
 RubikDisplay;
 
+
+typedef struct _squareRec
+{
+	int side;
+	int x;
+	int y;
+	int psi;
+}
+squareRec;
+
+
 typedef struct _faceRec
 {
 	float  color[4];
 	
-	float **th;
-	
-	}
+	squareRec *square;
+}
 faceRec;
 
 
@@ -144,6 +154,7 @@ RubikWindow;
 void rubikGetRotation( CompScreen *s, float *x, float *v );
 
 void initializeWorldVariables(int, float);
+void initFaces( CompScreen *s);
 void updateSpeedFactor(float);
 
 
@@ -155,6 +166,8 @@ float maximum(float,float); //nor did it have max or fmaxf!
 float symmDistr(void); //symmetric distribution
 void setColor(float *, float, float, float, float, float, float);
 void setSpecifiedColor (float *, int);
+void rotateClockwise (squareRec * square);
+void rotateAnticlockwise (squareRec * square);
 
 //maybe define a struct for these values
 float speedFactor; // global variable (fish/crab speeds multiplied by this value)
@@ -178,5 +191,9 @@ int currentHStrip;
 
 float currentStripCounter;
 int currentStripDirection;
+
+int rotationAxis; //0 - horizontal
+				  //1 - vertical from 1st viewport
+				  //2 - vertical from 2nd viewport
 
 #endif
