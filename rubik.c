@@ -22,6 +22,7 @@
 
 /*
  * Loosely based on freewins, atlantis, and anaglyph.
+ * Some texture code from cubedbus.  
  */
 
 #include <stdlib.h>
@@ -51,8 +52,8 @@ initRubik (CompScreen *s)
 	CUBE_SCREEN (s);
 
 	rs->tempTransform = malloc (sizeof(CompTransform));
-	vStrips = rubikGetVerticalSize(s);
-	hStrips = rubikGetHorizontalSize(s);
+	vStrips = rubikGetNumberStrips(s);
+	hStrips = rubikGetNumberStrips(s);
 	
     rs->th    = malloc (vStrips*sizeof(float));
     rs->oldTh = malloc (vStrips*sizeof(float));
@@ -62,6 +63,7 @@ initRubik (CompScreen *s)
 
     
     int i;
+    
     for (i=0; i<vStrips; i++) { 
     	rs->th[i] = 0.0;
     	rs->oldTh[i] = rs->th[i];
@@ -76,22 +78,37 @@ initRubik (CompScreen *s)
 	currentHStrip = NRAND(hStrips);
 	currentStripCounter = 0;
 	currentStripDirection = 1;
+	rotationAxis = NRAND(1);
 	
 	rs->w = NULL;
 	rs->numDesktopWindows = 0;
 	speedFactor = rubikGetSpeedFactor(s);
 
 	initializeWorldVariables(s->hsize, cs->distance);
+
 	
-	rs->faces = malloc (4*sizeof(faceRec));
+	rs->faces     = malloc (6*sizeof(faceRec));
+	for (i=0; i<6; i++) {
+		rs->faces[i].square = malloc (hStrips*vStrips*sizeof(squareRec));
+	}
 	
+    //sides
 	setSpecifiedColor (rs->faces[0].color, RED); 
 	setSpecifiedColor (rs->faces[1].color, YELLOW); 
 	setSpecifiedColor (rs->faces[2].color, BLUE); 
 	setSpecifiedColor (rs->faces[3].color, GREEN); 
+
+	//top and bottom
+	setSpecifiedColor (rs->faces[4].color, WHITE); 
+	setSpecifiedColor (rs->faces[5].color, ORANGE); 
+
+	
+	initFaces (s);
 }
 
-void initializeWorldVariables(int hs, float perpDistCentreToWall) { //precalculate some values
+void
+initializeWorldVariables(int hs, float perpDistCentreToWall)
+{ //precalculate some values
 
 	hSize = hs;
 	q = (float) hSize;
@@ -99,6 +116,28 @@ void initializeWorldVariables(int hs, float perpDistCentreToWall) { //precalcula
 	distance = perpDistCentreToWall;
 	radius = perpDistCentreToWall/sinf(PI*(0.5-1/q));
 }
+void
+initFaces (CompScreen *s)
+{
+	
+	RUBIK_SCREEN (s);
+	int i,j,k;
+	
+	for (k=0; k<6; k++) {
+		for (j=0; j< vStrips; j++) {
+			for (i=0; i< hStrips; i++) {
+				int index=j*hStrips+i;
+				
+				rs->faces[k].square[index].side = k;
+				rs->faces[k].square[index].x = i;//NRAND(vStrips);//i;
+				rs->faces[k].square[index].y = j;//NRAND(hStrips);//j;
+
+				rs->faces[k].square[index].psi  = 0;
+			}
+		}
+	}
+}
+
 
 static void
 freeRubik (CompScreen *s)
@@ -121,8 +160,15 @@ freeRubik (CompScreen *s)
 		free (rs->oldPsi);
 
 
-	if (rs->faces)
+	if (rs->faces) {
+		int i;
+		for (i=0; i<6; i++) {
+			if (rs->faces[i].square)
+				free (rs->faces[i].square);
+		}
+			
 		free (rs->faces);
+	}
 	
 	if (rs->w)
 		free (rs->w);
@@ -180,6 +226,7 @@ static void rubikPaintInside (CompScreen *s,
 
 	if (hSize!=s->hsize) updateRubik (s);
 
+	
 	/*static const float mat_shininess[]      = { 60.0 };
 	static const float mat_specular[]       = { 0.8, 0.8, 0.8, 1.0 };
 	static const float mat_diffuse[]        = { 0.46, 0.66, 0.795, 1.0 };
@@ -244,6 +291,9 @@ static void rubikPaintInside (CompScreen *s,
 		for (k=0; k < (coloredSides ? 1 : rs->numDesktopWindows); k++) {
 
 			if (!coloredSides) {
+				if ((*rs->w[k]).destroyed) continue;
+				if ((*rs->w[k]).hidden) continue;
+				
 				enableTexture (s, (*rs->w[k]).texture, 
 						COMP_TEXTURE_FILTER_GOOD); 
 
@@ -273,118 +323,218 @@ static void rubikPaintInside (CompScreen *s,
 			int texWidth = 1;//(rs->w[0].width)/vStrips;
 			int texHeight = 1;//(rs->w[0].height)/vStrips;
 
-			int i, j;
-			for (i=0; i< 4; i++) {
+			
+			int i, hs, vs;
+			for (i=0; i < 6; i++) {
 
-				if (coloredSides) {
+
+				if (coloredSides)
 					glColor4fv (rs->faces[i].color);
-				}
-				if (rubikGetRotateHorizontally(s)) {
-					for (j=0; j<hStrips; j++) {
+
+				
+				if (rubikGetRotateAllAxes(s)) {
+					
+					for (vs=0; vs<vStrips; vs++) {
+
+					for (hs=0; hs<hStrips; hs++) {
+
+						int index = hs*hStrips+vs;
+						squareRec * square = &(rs->faces[i].square[index]);
+						
+						if (coloredSides)
+							glColor4fv (rs->faces[square->side].color);
+						else if (!rubikGetDesktopCaps(s) && square->side>=4)
+							continue;
 
 						glPushMatrix();
 
-						glRotatef (90*i, 0, 1, 0);
+						if(rotationAxis==0) {
+							if (i<4) {
+								if (hs == currentHStrip)
+									glRotatef (currentStripCounter*currentStripDirection,0,1,0);
+							}
+							else if (i==4) {
+								if (currentHStrip==0)
+									glRotatef (currentStripCounter*currentStripDirection,0,1,0);
+							}
+							else if (i==5) {
+								if (currentHStrip==hStrips-1)
+									glRotatef (currentStripCounter*currentStripDirection,0,1,0);
+							}
+						}
+						else if(rotationAxis==1) {
+							if (i==3) {
+								if (currentHStrip==0)
+									glRotatef (-currentStripCounter*currentStripDirection,1,0,0);
+							}
+							else if (i==1) {
+								if (currentHStrip==hStrips-1)
+									glRotatef (-currentStripCounter*currentStripDirection,1,0,0);
+							}
+							else if (i==2){
+								if (vStrips-1-vs == currentHStrip)
+									glRotatef (-currentStripCounter*currentStripDirection,1,0,0);
+							}
+							else {
+								if (vs == currentHStrip)
+									glRotatef (-currentStripCounter*currentStripDirection,1,0,0);
+							}
+						}
+						else if(rotationAxis==2) {
+							if (i==0) {
+								if (currentHStrip==0)
+									glRotatef (-currentStripCounter*currentStripDirection,0,0,1);
+							}
+							else if (i==1){
+								if (vs == currentHStrip)
+									glRotatef (-currentStripCounter*currentStripDirection,0,0,1);
+							}
+							else if (i==2) {
+								if (currentHStrip==hStrips-1)
+									glRotatef (-currentStripCounter*currentStripDirection,0,0,1);
+							}
+							else if (i==3){
+								if (vStrips-1-vs == currentHStrip)
+									glRotatef (-currentStripCounter*currentStripDirection,0,0,1);
+							}
+							else if (i==4){
+								if (hStrips-1-hs == currentHStrip)
+									glRotatef (-currentStripCounter*currentStripDirection,0,0,1);
+							}
+							else if (i==5){
+								if (hs == currentHStrip)
+									glRotatef (-currentStripCounter*currentStripDirection,0,0,1);
+							}
 
-						if (i==0)
-							glRotatef (rs->psi[j], 0, 1, 0);
+						}
+						
+
+						if (i<4)
+							glRotatef (90*i, 0, 1, 0);
+						else if (i==4)
+							glRotatef (-90, 1, 0, 0);
+						else if (i==5) {
+							glRotatef (90, 1, 0, 0);
+							//glRotatef (180, 0, 0, 1);
+						}
+						
+						
+
+						/*if (i==0)
+							glRotatef (face->side[index]*90, 0, 1, 0);
 						if (i==2)
-							glRotatef (rs->psi[j], 0, 1, 0);
+							glRotatef (face->side[index]*90, 0, 1, 0);
 						if (i==1)
-							glRotatef (rs->psi[j], 0, 1, 0);
+							glRotatef (face->side[index]*90, 0, 1, 0);
 						if (i==3)
-							glRotatef (rs->psi[j], 0, 1, 0);
-
+							glRotatef (face->side[index]*90, 0, 1, 0);
+*/
 						glTranslatef (0,0,0.5-0.00001*(k+1)); //allow for layers
 
-						if (coloredSides) {
-							glTranslatef (-0.5,0,0);
-							glTranslatef (0,0.5,0);
-						}
-						else {
-							glTranslatef (-((float) (*rs->w[k]).attrib.x)/((float) s->width)-0.5,0,0);
-							glTranslatef (0,-((float) (*rs->w[k]).attrib.y)/((float) s->height)+0.5,0);
-						}
 
-						float s1 = ((float) j   )/((float) hStrips);	
-						float s2 = ((float) j+1 )/((float) hStrips);	
+						glTranslatef (-0.5,0,0);
+						glTranslatef (0,0.5,0);
 
+						glTranslatef (((float) vs+0.5 )/((float) hStrips),0,0);
+						glTranslatef (0,-((float) hs+0.5 )/((float) vStrips),0);
 
-
-						/*Bool renderWindow = FALSE;
-						if (((float) (*rs->w[k]).attrib.y)<=((float) s->height)*s2) {
-							
-							renderWindow = TRUE;
-							
-						}
-						else if (((float) (*rs->w[k]).attrib.y)+(*rs->w[k]).height>=((float) s->height)*s1) {
-							
-							renderWindow = TRUE;
-						}*/
+						glRotatef (90*square->psi, 0, 0, 1);
 						
+						//glRotatef (90*NRAND(4), 0, 0, 1);
+						glTranslatef (-((float) vs+0.5 )/((float) hStrips),0,0);
+						glTranslatef (0,((float) hs+0.5 )/((float) vStrips),0);
+
+						if (!coloredSides) {
+							glTranslatef (-((float) (*rs->w[k]).attrib.x)/((float) s->width),0,0);
+							glTranslatef (0,-((float) (*rs->w[k]).attrib.y)/((float) s->height),0);
+						}
+
+
+						float h1 = ((float) square->y   )/((float) hStrips);	
+						float h2 = ((float) square->y+1 )/((float) hStrips);
+						
+						float v1 = ((float) square->x   )/((float) vStrips);	
+						float v2 = ((float) square->x+1 )/((float) vStrips);	
+
 						float y = 0;
 						if (!coloredSides)
 							y = ((float) (*rs->w[k]).attrib.y)/((float) s->height);
+
+						float x = 0;
+						if (!coloredSides)
+							x = ((float) (*rs->w[k]).attrib.x)/((float) s->width);
+
 						
-						float ts1 = maximum (y, s1);
-						float ts2 = minimum (y+height, s2);
+						float wh1 = maximum (y, h1);
+						float wh2 = minimum (y+height, h2);
 						
-						if (y>s1)
-							s1=y;
-						if (y+height<s2)
-							s2=y+height;
+						float wv1 = maximum (x, v1);
+						float wv2 = minimum (x+width, v2);
 
-						//float ts1 = maximum (((float) (*rs->w[k]).attrib.y-(*rs->w[k]).height)/((float) s->height), s1);
-						//float ts2 = minimum ((((float) (*rs->w[k]).attrib.y))/((float) s->height), s2);
+						if (y>h1)
+							h1=y;
+						if (y+height<h2)
+							h2=y+height;
 
-						if (ts1<ts2) {
+						if (x>v1)
+							v1=x;
+						if (x+width<v2)
+							v2=x+width;
 
-							s1 -= y;
-							s2 = (s2-y)/height;
-							ts1-= y;
-							ts2-= y;
+						
+						if (wh1<wh2) {
+
+							h1 -= y;
+							h2 = (h2-y)/height;
+							wh1-= y;
+							wh2-= y;
 							
-							//ts1 = (((float) (*rs->w[k]).attrib.y)-((float) (*rs->w[k]).height))/((float) s->height);
-							//ts2 = 1;
-						//ts1 -= ((float) (*rs->w[k]).attrib.y)/((float) s->height);
-						//ts2 -= ((float) (*rs->w[k]).attrib.y)/((float) s->height);
-						
+							wh1+=((float) hs-square->y   )/((float) hStrips);	
+							wh2+=((float) hs-square->y   )/((float) hStrips);	
 
-						glBegin(GL_QUADS); 
+							wv1+=((float) vs-square->x   )/((float) vStrips);	
+							wv2+=((float) vs-square->x   )/((float) vStrips);	
 
-						glNormal3f (1,1,0);
-						glTexCoord2f (0, s1*texHeight);
-						glVertex3f( 0, -ts1,0 );	// Top Left Of The Texture and Quad
 
-						//glNormal3f (0,0,1);
-						glTexCoord2f (texWidth, s1*texHeight);  
-						glVertex3f( width, -ts1,0);	// Top Right Of The Texture and Quad    
+							
+							glBegin(GL_QUADS); 
 
-						//glNormal3f (0,0,1);
-						glTexCoord2f (texWidth, s2*texHeight);  
-						glVertex3f( width, -ts2,0);	// Bot Right Of The Texture and Quad    
+							glNormal3f (1,1,0);
+							glTexCoord2f (v1*texWidth, h1*texHeight);
+							glVertex3f( wv1, -wh1,0 );	// Top Left Of The Texture and Quad
 
-						//glNormal3f (0,0,1);
-						glTexCoord2f ( 0, s2*texHeight); 
-						glVertex3f( 0,-ts2,0);
+							//glNormal3f (0,0,1);
+							glTexCoord2f (v2*texWidth, h1*texHeight);  
+							glVertex3f( wv2, -wh1,0);	// Top Right Of The Texture and Quad    
 
-						glEnd();
-					}
+							//glNormal3f (0,0,1);
+							glTexCoord2f (v2*texWidth, h2*texHeight);  
+							glVertex3f( wv2, -wh2,0);	// Bot Right Of The Texture and Quad    
+
+							//glNormal3f (0,0,1);
+							glTexCoord2f ( v1*texWidth, h2*texHeight); 
+							glVertex3f( wv1,-wh2,0);
+
+							glEnd();
+						}
 
 						glPopMatrix();
 					}
+					}
 				}
 				else {
-					for (j=0; j<vStrips; j++) {
+					if (i>=4) continue;
+					
+					for (vs=0; vs<vStrips; vs++) {
 
 						glPushMatrix();
 
 						glRotatef (90*i, 0, 1, 0);
 
 						if (i==0)
-							glRotatef (rs->th[j], 1, 0, 0);
+							glRotatef (rs->th[vs], 1, 0, 0);
 						if (i==2)
-							glRotatef (-rs->th[vStrips-j-1], 1, 0, 0);
+							glRotatef (-rs->th[vStrips-vs-1], 1, 0, 0);
 						if (i==1)
 							glRotatef (rs->th[vStrips-1], 0, 0, 1);
 						if (i==3)
@@ -401,8 +551,8 @@ static void rubikPaintInside (CompScreen *s,
 							glTranslatef (0,-((float) (*rs->w[k]).attrib.y)/((float) s->height)+0.5,0);
 						}
 
-						float s1 = ((float) j   )/((float) vStrips);	
-						float s2 = ((float) j+1 )/((float) vStrips);	
+						float s1 = ((float) vs   )/((float) vStrips);	
+						float s2 = ((float) vs+1 )/((float) vStrips);	
 
 							glBegin(GL_QUADS); 
 
@@ -470,9 +620,14 @@ rubikPreparePaintScreen (CompScreen *s,
 	RUBIK_SCREEN (s);
 	CUBE_SCREEN  (s);
 
+	//rotationAxis=2; //TESTING
+	//currentStripDirection=-1; //TESTING
+	
+	if (hSize!=4) rs->initiated = FALSE;
+	
 	int i;
 	if (rs->initiated) {
-		if (rubikGetRotateHorizontally(s)) {
+		if (rubikGetRotateAllAxes(s)) {
 			i= currentHStrip;
 			float increment = speedFactor; 
 			rs->psi[i]  += currentStripDirection*increment;
@@ -481,16 +636,171 @@ rubikPreparePaintScreen (CompScreen *s,
 			if (currentStripCounter>90) {
 				rs->psi[i]=rs->oldPsi[i]+currentStripDirection*90;
 				currentStripCounter -=90;
+				
+				
+				int j,k;
+				if (rotationAxis==0) {
+					for (k=0; k<vStrips; k++) {
+						if (currentStripDirection==1) {
+							squareRec tempSquare = (rs->faces[4-1].square[i*hStrips+k]);
+							
+							for (j=4-1; j>0; j--) {  
+								rs->faces[j].square[i*hStrips+k] = rs->faces[j-1].square[i*hStrips+k];
+							}
+							
+							rs->faces[0].square[i*hStrips+k] = tempSquare;
+
+							
+							if (i==0) {
+
+								if (k==0)
+									rotateClockwise ((rs->faces[4].square));
+							}
+							if (i==hStrips-1) {
+								if (k==0)
+									rotateAnticlockwise ((rs->faces[5].square));
+							}
+							
+						}
+						else {
+							squareRec tempSquare = (rs->faces[0].square[i*hStrips+k]);
+							
+							for (j=0; j<4-1; j++) {  
+								rs->faces[j].square[i*hStrips+k] = rs->faces[j+1].square[i*hStrips+k];
+							}
+							
+							rs->faces[4-1].square[i*hStrips+k] = tempSquare;
+
+							
+							if (i==0) {
+								if (k==0)
+									rotateAnticlockwise ((rs->faces[4].square));
+							}
+							if (i==hStrips-1) {
+								if (k==0)
+									rotateClockwise ((rs->faces[5].square));
+							}
+						
+						}
+
+
+					}
+
+				}
+				else if (rotationAxis==1) {
+					for (k=0; k<vStrips; k++) {
+						if (currentStripDirection==1) {
+
+							squareRec tempSquare = (rs->faces[4].square[k*hStrips+i]);
+							
+							rs->faces[4].square[k*hStrips+i] = rs->faces[0].square[k*hStrips+i];
+							rs->faces[0].square[k*hStrips+i] = rs->faces[5].square[k*hStrips+i];
+							rs->faces[5].square[k*hStrips+i] = rs->faces[2].square[(vStrips-1-k)*hStrips+(vStrips-1-i)];
+							rs->faces[2].square[(vStrips-1-k)*hStrips+(vStrips-1-i)] = tempSquare;
+							
+							rs->faces[5].square[k*hStrips+i].psi = (rs->faces[5].square[k*hStrips+i].psi+2)%4; 
+							rs->faces[2].square[(vStrips-1-k)*hStrips+(vStrips-1-i)].psi = (rs->faces[2].square[(vStrips-1-k)*hStrips+(vStrips-1-i)].psi+2)%4;
+							
+							
+							if (i==hStrips-1) {
+
+								if (k==0)
+									rotateAnticlockwise ((rs->faces[1].square));
+							}
+							if (i==0) {
+								if (k==0)
+									rotateClockwise ((rs->faces[3].square));
+							}
+						}
+						else {
+
+							squareRec tempSquare = (rs->faces[4].square[k*hStrips+i]);
+							
+							rs->faces[4].square[k*hStrips+i] = rs->faces[2].square[(vStrips-1-k)*hStrips+(vStrips-1-i)];
+							rs->faces[2].square[(vStrips-1-k)*hStrips+(vStrips-1-i)] = rs->faces[5].square[k*hStrips+i];
+							rs->faces[5].square[k*hStrips+i] = rs->faces[0].square[k*hStrips+i]; 
+							rs->faces[0].square[k*hStrips+i] = tempSquare;
+							
+							rs->faces[2].square[(vStrips-1-k)*hStrips+(vStrips-1-i)].psi = (rs->faces[2].square[(vStrips-1-k)*hStrips+(vStrips-1-i)].psi+2)%4;
+							rs->faces[4].square[k*hStrips+i].psi = (rs->faces[4].square[k*hStrips+i].psi+2)%4;
+							
+							
+							
+							if (i==0) {
+								if (k==0)
+									rotateAnticlockwise ((rs->faces[3].square));
+							}
+							if (i==hStrips-1) {
+								if (k==0)
+									rotateClockwise ((rs->faces[1].square));
+							}
+						}
+						
+					}
+
+				}
+				else if (rotationAxis==2) {
+					for (k=0; k<vStrips; k++) {
+						if (currentStripDirection==1) {
+							squareRec tempSquare = (rs->faces[4].square[(vStrips-1-i)*hStrips+k]);
+							
+							rs->faces[4].square[(vStrips-1-i)*hStrips+k] = rs->faces[3].square[(vStrips-1-k)*hStrips+(vStrips-1-i)];
+							rs->faces[3].square[(vStrips-1-k)*hStrips+(vStrips-1-i)]=rs->faces[5].square[i*hStrips+(vStrips-1-k)];
+							rs->faces[5].square[i*hStrips+(vStrips-1-k)]=rs->faces[1].square[k*hStrips+i];
+							rs->faces[1].square[k*hStrips+i]=tempSquare;
+							
+							
+							rs->faces[4].square[(vStrips-1-i)*hStrips+k].psi = (rs->faces[4].square[(vStrips-1-i)*hStrips+k].psi+3)%4;
+							rs->faces[3].square[(vStrips-1-k)*hStrips+(vStrips-1-i)].psi = (rs->faces[3].square[(vStrips-1-k)*hStrips+(vStrips-1-i)].psi+3)%4;
+							rs->faces[5].square[i*hStrips+(vStrips-1-k)].psi = (rs->faces[5].square[i*hStrips+(vStrips-1-k)].psi+3)%4;
+							rs->faces[1].square[k*hStrips+i].psi = (rs->faces[1].square[k*hStrips+i].psi+3)%4;
+							
+							if (i==0) {
+								if (k==0)
+									rotateAnticlockwise ((rs->faces[0].square));
+							}
+							if (i==hStrips-1) {
+								if (k==0)
+									rotateClockwise ((rs->faces[2].square));
+							}
+						}
+						else {
+							squareRec tempSquare = (rs->faces[4].square[(vStrips-1-i)*hStrips+k]);
+							
+							rs->faces[4].square[(vStrips-1-i)*hStrips+k] = rs->faces[1].square[k*hStrips+i];
+							rs->faces[1].square[k*hStrips+i] = rs->faces[5].square[i*hStrips+(vStrips-1-k)]; 
+							rs->faces[5].square[i*hStrips+(vStrips-1-k)] = rs->faces[3].square[(vStrips-1-k)*hStrips+(vStrips-1-i)];
+							rs->faces[3].square[(vStrips-1-k)*hStrips+(vStrips-1-i)]= tempSquare;
+							
+							
+							rs->faces[4].square[(vStrips-1-i)*hStrips+k].psi = (rs->faces[4].square[(vStrips-1-i)*hStrips+k].psi+1)%4;
+							rs->faces[3].square[(vStrips-1-k)*hStrips+(vStrips-1-i)].psi = (rs->faces[3].square[(vStrips-1-k)*hStrips+(vStrips-1-i)].psi+1)%4;
+							rs->faces[5].square[i*hStrips+(vStrips-1-k)].psi = (rs->faces[5].square[i*hStrips+(vStrips-1-k)].psi+1)%4;
+							rs->faces[1].square[k*hStrips+i].psi = (rs->faces[1].square[k*hStrips+i].psi+1)%4;
+							
+							
+							if (i==0) {
+								if (k==0)
+									rotateClockwise ((rs->faces[0].square));
+							}
+							if (i==hStrips-1) {
+								if (k==0)
+									rotateAnticlockwise ((rs->faces[2].square));
+							}
+						}
+					}
+				}
+				
 				currentHStrip = NRAND(hStrips);
 				currentStripDirection = NRAND(2)*2-1;
+				rotationAxis = NRAND(3);
 				rs->oldPsi[i]= rs->psi[i];
-
 			}
 			rs->psi[i] = fmodf(rs->psi[i], 360);
 		}
 		else {
 			i= currentVStrip;
-			float increment = speedFactor; 
+			float increment = 2*speedFactor;
 			rs->th[i]  += currentStripDirection*increment;
 			currentStripCounter +=increment;
 
@@ -563,14 +873,14 @@ toggleRubikEffect (CompScreen *s)
 		currentVStrip = NRAND(vStrips);
 		currentStripCounter =0;
 		currentStripDirection = NRAND(2)*2-1;
+		rotationAxis = NRAND(1);
+
 		
 		//cs->rotationState = RotationManual;
 		//WRAP( rs, cs, getRotation, rubikGetRotation );
 	}
 	else {
-		//if (rs-w)
-		//	free (rs->w)
-		//rs->w = NULL;
+		initFaces (s);
 		
 		//cs->rotationState = RotationNone;
 		
@@ -643,7 +953,7 @@ RubikDrawWindowTexture(CompWindow * w, CompTexture * texture,
     //RUBIK_WINDOW(w);
     RUBIK_SCREEN(w->screen);
 
-    if (texture!=NULL && w->desktop && !w->hidden) {
+    if (texture!=NULL && (w->desktop) && !w->hidden) {
     	
     	Bool newWindow = TRUE;
     	int i;
@@ -706,9 +1016,12 @@ RubikDrawWindow (CompWindow           *w,
     CUBE_SCREEN (s);
 
     if (rs->initiated) {
-    	if (w->desktop && cs->rotationState!=RotationNone && rubikGetRotateDesktop(s)) {
+    	if (w->desktop && cs->rotationState!=RotationNone && rubikGetRotateDesktop(s))
     		fA.opacity = 0;
-    	}
+    	
+    	if (!w->desktop && rubikGetRotateAllAxes(s) && cs->rotationState!=RotationNone)
+    		fA.opacity = 0;
+    		
     }
     
     if (rs->initiated) {
@@ -758,6 +1071,13 @@ RubikAddWindowGeometry(CompWindow * w,
     			clip->rects[i].x1 = 1280*((int) (winX/screenW)-w->screen->x);
     			clip->rects[i].x2 = 1280*((int) (winX/screenW)+1-w->screen->x);
     		}
+        	if (rubikGetRotateAllAxes(w->screen) && cs->rotationState!=RotationNone) {
+        		for (i=0; i<clip->numRects; i++) {
+        			clip->rects[i].x1 = 0;
+        			clip->rects[i].x2 = 0;
+        		}
+        	}
+    		
     	}
     	else if (w->desktop && cs->rotationState!=RotationNone && rubikGetRotateDesktop(w->screen)) {
     		for (i=0; i<clip->numRects; i++) {
@@ -1060,9 +1380,8 @@ rubikInitScreen (CompPlugin *p,
 
 
 	rubikSetSpeedFactorNotify (s, rubikSpeedFactorOptionChange);
-	rubikSetHorizontalSizeNotify (s, rubikScreenOptionChange);
-	rubikSetVerticalSizeNotify (s, rubikScreenOptionChange);
-	rubikSetRotateHorizontallyNotify (s, rubikScreenOptionChange);
+	rubikSetNumberStripsNotify (s, rubikScreenOptionChange);
+	rubikSetRotateAllAxesNotify (s, rubikScreenOptionChange);
 
     rs->initiated = FALSE;
     
