@@ -370,7 +370,7 @@ static void rubikPaintInside (CompScreen *s,
 	                glDisable(GL_AUTO_NORMAL);
 			glDisable (GL_TEXTURE_2D);
 			glDisable (GL_DEPTH_TEST);
-                        
+                        glDisable (GL_COLOR_BUFFER_BIT);
 			
 			if (coloredSides) {
 				glEnable (GL_COLOR_MATERIAL);
@@ -383,6 +383,7 @@ static void rubikPaintInside (CompScreen *s,
 	                        glEnable(GL_DEPTH_TEST);
 	                        glEnable(GL_AUTO_NORMAL);
 				glDisable (GL_TEXTURE_2D);
+                                glEnable (GL_COLOR_BUFFER_BIT);
 			}
 
 			// draw texture 
