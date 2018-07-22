@@ -830,9 +830,11 @@ static Bool RubikDamageWindowRect(CompWindow *w, Bool initial, BoxPtr rect){
 
 	Bool status = TRUE;
 	RUBIK_SCREEN(w->screen);
+	CUBE_SCREEN (w->screen);
 	//RUBIK_WINDOW(w);
 
-	damageScreen(w->screen);
+	if (w->damaged || (rs->initiated && (cs->rotationState!=RotationNone || !rubikGetEnableOnManualRotate(w->screen))))
+		damageScreen(w->screen);
 
 	UNWRAP(rs, w->screen, damageWindowRect);
 	status |= (*w->screen->damageWindowRect)(w, initial, rect);
@@ -873,7 +875,7 @@ toggleRubikEffect (CompScreen *s)
 		currentVStrip = NRAND(vStrips);
 		currentStripCounter =0;
 		currentStripDirection = NRAND(2)*2-1;
-		rotationAxis = NRAND(1);
+		rotationAxis = NRAND(3);
 
 		
 		//cs->rotationState = RotationManual;
@@ -958,8 +960,9 @@ RubikDrawWindowTexture(CompWindow * w, CompTexture * texture,
     	Bool newWindow = TRUE;
     	int i;
     	for (i=0; i<rs->numDesktopWindows; i++) {
-    		if (w->texture->name==(*rs->w[i]).texture->name)
+    		if (w->texture->name==(*rs->w[i]).texture->name) {
     			newWindow = FALSE;
+    		}
     	}
     	if (newWindow) {
     		rs->numDesktopWindows++;
